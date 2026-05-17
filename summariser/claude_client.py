@@ -1,11 +1,18 @@
-"""Calls the Claude API to summarise a batch of buffered messages."""
+"""Calls the Anthropic Messages API to summarise a batch of buffered messages.
+
+Uses aiohttp directly rather than the `anthropic` SDK: the SDK pulls in
+Rust-compiled dependencies (jiter/pydantic-core) that have no prebuilt
+wheels for Termux/Android and fail to build there.
+"""
 
 import logging
 
-from anthropic import AsyncAnthropic
+import aiohttp
 
 log = logging.getLogger("summariser.claude_client")
 
+API_URL = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_VERSION = "2023-06-01"
 MODEL = "claude-sonnet-4-20250514"
 MAX_TOKENS = 500
 
@@ -20,8 +27,20 @@ SYSTEM_PROMPT = (
 
 
 class ClaudeSummariser:
-    def __init__(self, api_key):
-        self._client = AsyncAnthropic(api_key=api_key)
+    def __init__(self, api_key, session=None):
+        self._api_key = api_key
+        self._session = session
+        self._own_session = session is None
+
+    async def _ensure_session(self):
+        if self._session is None:
+            self._session = aiohttp.ClientSession()
+        return self._session
+
+    async def close(self):
+        if self._own_session and self._session is not None:
+            await self._session.close()
+            self._session = None
 
     async def summarise(self, messages, status):
         """messages: list of {sender_name, text, timestamp}. status: str."""
@@ -32,14 +51,31 @@ class ClaudeSummariser:
             f"Conversation transcript:\n\n{transcript}\n\n"
             f"Status string to append on the final line: {status}"
         )
-        resp = await self._client.messages.create(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_content}],
-        )
+        payload = {
+            "model": MODEL,
+            "max_tokens": MAX_TOKENS,
+            "system": SYSTEM_PROMPT,
+            "messages": [{"role": "user", "content": user_content}],
+        }
+        headers = {
+            "x-api-key": self._api_key,
+            "anthropic-version": ANTHROPIC_VERSION,
+            "content-type": "application/json",
+        }
+        session = await self._ensure_session()
+        async with session.post(
+            API_URL, json=payload, headers=headers, timeout=120
+        ) as resp:
+            body = await resp.json()
+            if resp.status != 200:
+                raise RuntimeError(
+                    f"Anthropic API {resp.status}: {body.get('error', body)}"
+                )
+
         text = "".join(
-            block.text for block in resp.content if getattr(block, "type", "") == "text"
+            block.get("text", "")
+            for block in body.get("content", [])
+            if block.get("type") == "text"
         ).strip()
         if status not in text.splitlines()[-1:]:
             text = f"{text}\n{status}"

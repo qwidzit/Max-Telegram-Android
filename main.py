@@ -68,6 +68,7 @@ async def main():
         await asyncio.gather(*tasks, return_exceptions=True)
         await sender.close()
         await command_handler.close()
+        await summariser.close()
 
 
 if __name__ == "__main__":
