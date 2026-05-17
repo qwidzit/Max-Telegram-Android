@@ -1,0 +1,12 @@
+{
+  "chats": {
+    "Work Group": {
+      "mode": "summarise",
+      "timeout_minutes": 10,
+      "message_count": 20
+    },
+    "Family Chat": {
+      "mode": "autoresend"
+    }
+  }
+}

@@ -1,0 +1,5 @@
+anthropic
+aiohttp
+aiofiles
+python-dotenv
+maxapi
