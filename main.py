@@ -30,13 +30,30 @@ def _require(name):
     return val
 
 
+async def _max_task_guarded(max_listener, sender):
+    """Run Max listener; log clearly if the library isn't installed yet."""
+    try:
+        await max_listener.run()
+    except ImportError as e:
+        log.warning(
+            "Max library not available (%s). "
+            "Telegram control side is fully operational. "
+            "Install a compatible Max library to enable message forwarding.",
+            e,
+        )
+        await sender.send_alert(
+            "Bot started (Telegram only). "
+            "Max listener is inactive: library not installed."
+        )
+
+
 async def main():
     load_dotenv()
 
     anthropic_key = _require("ANTHROPIC_API_KEY")
     bot_token = _require("TELEGRAM_BOT_TOKEN")
     owner_chat_id = _require("TELEGRAM_OWNER_CHAT_ID")
-    max_phone = _require("MAX_PHONE")
+    max_phone = os.getenv("MAX_PHONE", "")
     max_password = os.getenv("MAX_PASSWORD", "")
     session_file = os.getenv("MAX_SESSION_FILE", "max_session")
 
@@ -46,13 +63,13 @@ async def main():
     message_buffer = MessageBuffer(config_manager, summariser, sender)
     router = Router(config_manager, sender, message_buffer)
     command_handler = CommandHandler(bot_token, owner_chat_id, config_manager)
-    max_listener = MaxListener(
-        max_phone, max_password, session_file, router.handle
-    )
+    max_listener = MaxListener(max_phone, max_password, session_file, router.handle)
 
     log.info("Starting Max → Telegram bridge")
     tasks = [
-        asyncio.create_task(max_listener.run(), name="max_listener"),
+        asyncio.create_task(
+            _max_task_guarded(max_listener, sender), name="max_listener"
+        ),
         asyncio.create_task(command_handler.run(), name="command_handler"),
         asyncio.create_task(
             message_buffer.run_timeout_checker(), name="timeout_checker"
