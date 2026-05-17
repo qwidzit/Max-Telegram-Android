@@ -1,0 +1,8 @@
+.env
+config.json
+max_session*
+__pycache__/
+*.pyc
+*.log
+venv/
+.venv/
