@@ -49,6 +49,7 @@ async def main():
     owner_chat_id = _require("TELEGRAM_OWNER_CHAT_ID")
     max_phone = os.getenv("MAX_PHONE", "")
     max_password = os.getenv("MAX_PASSWORD", "")
+    max_access_token = os.getenv("MAX_ACCESS_TOKEN", "")
     session_file = os.getenv("MAX_SESSION_FILE", "max_session")
 
     config_manager = ConfigManager("config.json")
@@ -57,7 +58,9 @@ async def main():
     message_buffer = MessageBuffer(config_manager, summariser, sender)
     router = Router(config_manager, sender, message_buffer)
     command_handler = CommandHandler(bot_token, owner_chat_id, config_manager)
-    max_listener = MaxListener(max_phone, max_password, session_file, router.handle)
+    max_listener = MaxListener(
+        max_phone, max_password, session_file, router.handle, max_access_token
+    )
 
     log.info("Starting Max → Telegram bridge")
     tasks = [

@@ -29,15 +29,40 @@ to the Telegram bot.
    cp .env.example .env
    cp config.json.example config.json   # optional starting point
    ```
-4. Edit `.env` and fill in **all** values:
-   - `MAX_PHONE` — the Max account's phone number (this phone's owner)
-   - `MAX_PASSWORD` — Max password if the library requires it
+4. Edit `.env` and fill in:
+   - `MAX_ACCESS_TOKEN` — **preferred**; obtain via the browser flow below
+   - `MAX_PHONE` / `MAX_PASSWORD` — fallback only (VK usually blocks this)
    - `MAX_SESSION_FILE` — path to persist the session token
    - `ANTHROPIC_API_KEY` — from the Anthropic console
    - `TELEGRAM_BOT_TOKEN` — from @BotFather
-   - `TELEGRAM_OWNER_CHAT_ID` — your personal Telegram chat ID (an integer;
-     get it by messaging your bot and checking
+   - `TELEGRAM_OWNER_CHAT_ID` — the recipient's Telegram chat ID (an integer;
+     get it by messaging the bot and checking
      `https://api.telegram.org/bot<TOKEN>/getUpdates`)
+
+### Getting a Max access token (browser flow)
+
+VK/Max usually refuses password login from scripts ("use another method").
+Instead, log in once in a real browser and copy the token:
+
+1. On any device, open this URL in a browser (one line, no spaces):
+
+   ```
+   https://oauth.vk.com/authorize?client_id=2685278&scope=messages,offline,friends&redirect_uri=https://oauth.vk.com/blank.html&display=page&response_type=token&revoke=1
+   ```
+
+2. Log in with the Max account (the browser handles password / 2FA / captcha).
+3. Approve access. The browser lands on a **blank page**. Look at the
+   address bar — the URL contains `access_token=` followed by a long string:
+
+   ```
+   https://oauth.vk.com/blank.html#access_token=vk1.a.AbC123...&expires_in=0&user_id=12345
+   ```
+
+4. Copy everything between `access_token=` and the next `&`.
+5. Paste it into `.env` as `MAX_ACCESS_TOKEN=vk1.a.AbC123...`
+
+This token is long-lived (the `offline` scope). Keep it secret — it has full
+messaging access to the account.
 5. Run inside tmux so it survives Termux closing:
    ```sh
    tmux new -s maxbot

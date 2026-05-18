@@ -29,11 +29,12 @@ MAX_BACKOFF = 300
 
 
 class MaxListener:
-    def __init__(self, phone, password, session_file, on_message):
+    def __init__(self, phone, password, session_file, on_message, access_token=None):
         self._phone = phone
         self._password = password
         self._session_file = session_file
         self._on_message = on_message
+        self._configured_token = access_token or None
         self._token = None
         self._http = None
         self._chat_cache = {}
@@ -42,8 +43,11 @@ class MaxListener:
     # ------------------------------------------------------------------ run
 
     async def run(self):
-        if not self._phone:
-            log.warning("MAX_PHONE not set — Max listener disabled.")
+        if not self._configured_token and not self._phone:
+            log.warning(
+                "Neither MAX_ACCESS_TOKEN nor MAX_PHONE set — "
+                "Max listener disabled."
+            )
             return
         self._http = aiohttp.ClientSession()
         try:
@@ -84,12 +88,20 @@ class MaxListener:
             log.warning("Could not save session file: %s", e)
 
     async def _authenticate(self):
+        # 1. Explicit token from .env always wins.
+        if self._configured_token:
+            self._token = self._configured_token
+            log.info("Using MAX_ACCESS_TOKEN from environment.")
+            return
+        # 2. Previously saved session token.
         if self._load_token():
             log.info("Loaded existing Max session from %s", self._session_file)
             return
+        # 3. Fall back to password auth (often blocked by VK now).
         if not self._password:
             raise RuntimeError(
-                "MAX_PASSWORD is not set. Fill it in .env and restart."
+                "No MAX_ACCESS_TOKEN and no MAX_PASSWORD set. "
+                "Obtain a token via the browser flow (see README)."
             )
         log.info("Authenticating with Max (VK) as %s …", self._phone)
         async with self._http.post(
@@ -110,7 +122,11 @@ class MaxListener:
 
         if "access_token" not in data:
             err = data.get("error_description") or data.get("error") or str(data)
-            raise RuntimeError(f"Max auth failed: {err}")
+            raise RuntimeError(
+                f"Max password auth failed: {err}. "
+                "Use the browser token method instead (see README "
+                "'Getting a Max access token')."
+            )
 
         self._token = data["access_token"]
         self._save_token()
