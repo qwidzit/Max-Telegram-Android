@@ -20,9 +20,9 @@ VK_API_BASE = "https://api.vk.com/method"
 OAUTH_URL = "https://oauth.vk.com/token"
 API_VERSION = "5.131"
 
-# Kate Mobile client — unofficial but stable for password-based auth
-_CLIENT_ID = "2685278"
-_CLIENT_SECRET = "lxhD8OD7dMsqtXIm5IUY"
+# Official VK Android client credentials
+_CLIENT_ID = "2274003"
+_CLIENT_SECRET = "hHbZxrka2uZ6jB1inYsH"
 
 CHAT_PEER_OFFSET = 2_000_000_000  # peer_id above this = group chat
 MAX_BACKOFF = 300
