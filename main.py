@@ -31,20 +31,14 @@ def _require(name):
 
 
 async def _max_task_guarded(max_listener, sender):
-    """Run Max listener; log clearly if the library isn't installed yet."""
+    """Run Max listener; send a Telegram alert if it exits unexpectedly."""
     try:
         await max_listener.run()
-    except ImportError as e:
-        log.warning(
-            "Max library not available (%s). "
-            "Telegram control side is fully operational. "
-            "Install a compatible Max library to enable message forwarding.",
-            e,
-        )
-        await sender.send_alert(
-            "Bot started (Telegram only). "
-            "Max listener is inactive: library not installed."
-        )
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        log.exception("Max listener crashed")
+        await sender.send_alert(f"Max listener crashed: {e}\nCheck logs.")
 
 
 async def main():
