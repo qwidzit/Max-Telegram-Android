@@ -30,39 +30,36 @@ to the Telegram bot.
    cp config.json.example config.json   # optional starting point
    ```
 4. Edit `.env` and fill in:
-   - `MAX_ACCESS_TOKEN` — **preferred**; obtain via the browser flow below
-   - `MAX_PHONE` / `MAX_PASSWORD` — fallback only (VK usually blocks this)
-   - `MAX_SESSION_FILE` — path to persist the session token
    - `ANTHROPIC_API_KEY` — from the Anthropic console
    - `TELEGRAM_BOT_TOKEN` — from @BotFather
    - `TELEGRAM_OWNER_CHAT_ID` — the recipient's Telegram chat ID (an integer;
      get it by messaging the bot and checking
      `https://api.telegram.org/bot<TOKEN>/getUpdates`)
 
-### Getting a Max access token (browser flow)
+   No Max credentials are needed — Max is read locally via Android
+   notifications.
 
-VK/Max usually refuses password login from scripts ("use another method").
-Instead, log in once in a real browser and copy the token:
+### Max access via Termux:API notifications
 
-1. On any device, open this URL in a browser (one line, no spaces):
+The bot reads incoming Max messages from the Android notifications the Max
+app posts. No Max account API/login is used.
 
-   ```
-   https://oauth.vk.com/authorize?client_id=2685278&scope=messages,offline,friends&redirect_uri=https://oauth.vk.com/blank.html&display=page&response_type=token&revoke=1
-   ```
+1. Install the **Termux:API** app from F-Droid (a separate companion app,
+   not just a package).
+2. In Termux: `pkg install termux-api`
+3. Grant **Notification Access** to Termux:API:
+   Android **Settings → Notifications → Notification access → Termux:API → Allow**
+   (wording varies by Android version; search "Notification access").
+4. Verify: run `termux-notification-list` — it should print JSON. Send a
+   Max message and confirm an entry with `"packageName": "ru.oneme.app"`
+   appears.
 
-2. Log in with the Max account (the browser handles password / 2FA / captcha).
-3. Approve access. The browser lands on a **blank page**. Look at the
-   address bar — the URL contains `access_token=` followed by a long string:
+The chat name shown in the Max app is what you configure commands against
+(e.g. `/summarise Work Group`). Keep the Max app logged in and running on
+this phone; disable battery optimisation for both Termux and Max.
 
-   ```
-   https://oauth.vk.com/blank.html#access_token=vk1.a.AbC123...&expires_in=0&user_id=12345
-   ```
+Limitation: Android can truncate very long messages in notifications.
 
-4. Copy everything between `access_token=` and the next `&`.
-5. Paste it into `.env` as `MAX_ACCESS_TOKEN=vk1.a.AbC123...`
-
-This token is long-lived (the `offline` scope). Keep it secret — it has full
-messaging access to the account.
 5. Run inside tmux so it survives Termux closing:
    ```sh
    tmux new -s maxbot
