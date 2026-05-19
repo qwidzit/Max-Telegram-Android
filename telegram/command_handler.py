@@ -73,10 +73,14 @@ class CommandHandler:
         url = API_BASE.format(token=self._token, method="getUpdates")
         while True:
             try:
-                params = {"timeout": 50}
+                params = {"timeout": 30}
                 if self._offset is not None:
                     params["offset"] = self._offset
-                async with session.get(url, params=params, timeout=70) as resp:
+                async with session.get(
+                    url,
+                    params=params,
+                    timeout=aiohttp.ClientTimeout(total=45, connect=10),
+                ) as resp:
                     if resp.status != 200:
                         body = await resp.text()
                         if resp.status == 409:
@@ -90,8 +94,18 @@ class CommandHandler:
                             await asyncio.sleep(5)
                         continue
                     data = await resp.json()
-            except (aiohttp.ClientError, OSError, asyncio.TimeoutError) as e:
-                log.warning("getUpdates error, retrying in 5s: %s", e)
+            except asyncio.TimeoutError:
+                log.warning(
+                    "getUpdates timed out — internet may be blocked. "
+                    "Run termux-wake-lock if not already active. Retrying in 10s."
+                )
+                await asyncio.sleep(10)
+                continue
+            except (aiohttp.ClientError, OSError) as e:
+                log.warning(
+                    "getUpdates error (%s), retrying in 5s: %s",
+                    type(e).__name__, e,
+                )
                 await asyncio.sleep(5)
                 continue
 
