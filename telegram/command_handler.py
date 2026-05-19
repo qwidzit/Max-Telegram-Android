@@ -1,5 +1,6 @@
 """Long-polls the Telegram Bot API for owner commands and updates config."""
 
+import asyncio
 import logging
 
 import aiohttp
@@ -77,11 +78,21 @@ class CommandHandler:
                     params["offset"] = self._offset
                 async with session.get(url, params=params, timeout=70) as resp:
                     if resp.status != 200:
-                        log.error("getUpdates %s: %s", resp.status, await resp.text())
+                        body = await resp.text()
+                        if resp.status == 409:
+                            log.error(
+                                "Telegram 409 Conflict — another bot instance "
+                                "is polling with this token. Backing off 15s."
+                            )
+                            await asyncio.sleep(15)
+                        else:
+                            log.error("getUpdates %s: %s", resp.status, body)
+                            await asyncio.sleep(5)
                         continue
                     data = await resp.json()
-            except (aiohttp.ClientError, OSError) as e:
-                log.warning("getUpdates error, retrying: %s", e)
+            except (aiohttp.ClientError, OSError, asyncio.TimeoutError) as e:
+                log.warning("getUpdates error, retrying in 5s: %s", e)
+                await asyncio.sleep(5)
                 continue
 
             for update in data.get("result", []):

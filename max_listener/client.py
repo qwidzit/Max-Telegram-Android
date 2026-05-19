@@ -19,7 +19,7 @@ log = logging.getLogger("max_listener.client")
 
 MAX_PACKAGE = "ru.oneme.app"
 CHAT_TAG = "CHAT_NOTIF"
-POLL_INTERVAL_SECONDS = 4
+POLL_INTERVAL_SECONDS = 8
 SEEN_LIMIT = 5000
 
 
